@@ -1,4 +1,4 @@
-# CFIA
+# Variant Calling
 # Instructions for how to install all package dependencies and execute the script
 
 # Instructions on how to install Docker with Image
