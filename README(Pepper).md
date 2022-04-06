@@ -1,7 +1,7 @@
 # Variant Calling
 
 # Introduction:
-The following script is run in order to create a multi-sample vcf file from an initial reference sequence and set of query sequences. In addition it also produces a fasta file from the multi-sample vcf file which can be used for phylogenetic analysis and tree building.
+The following script is run in order to create a multi-sample vcf file from an initial reference sequence and set of query sequences. In addition, it also produces a fasta file from the multi-sample vcf file which can be used for phylogenetic analysis and tree building.
 
 
 # Instructions for how to install all package dependencies and execute the script
