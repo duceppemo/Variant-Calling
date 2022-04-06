@@ -5,7 +5,6 @@ The following script is run in order to create a multi-sample vcf file from an i
 
 
 # Instructions for how to install all package dependencies and execute the script
-
 # Instructions on how to install Docker with Image
 $ sudo apt install docker.io=20.10.7-0ubuntu5~20.04.2 \
 $ sudo docker run hello-world will download a test container to confirm that the docker has been \
