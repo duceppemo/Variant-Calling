@@ -28,7 +28,7 @@ settings-->python interpreter
 2. Click the '+' to add a new package 
 3. Search the and select the pandas package 
 4. Click install package which will give you \
-the package has been successfully installed
+a verifcation that the  package has been successfully installed
 
 # Instructions to run docker without the sudo command
 ```python
