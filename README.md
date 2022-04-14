@@ -22,6 +22,13 @@ conda install -c bioconda gatk4=4.2.5.0
 conda install -c bioconda minimap2=2.24 
 conda install -c bioconda vcftools=0.1.16
 ```
+# Install the pandas package
+settings-->python interpreter \
+1. Select interpretor \
+2. Click the '+' to add a new package \
+3. Search the and select the pandas package \
+4. Click install package which will give you \
+the package has been successfully installed
 
 # Instructions to run docker without the sudo command
 ```python
@@ -41,8 +48,8 @@ Run sudo setfacl -m user:($USER):rw /var/run/docker.sock # --> to be able to exe
 python Pepper_ont.py -i [folder with the query fastq files] -r [reference fasta file] -o [output folder]  [-t 4] 
 [-p PARALLEL]
 ```
--i folder containing the query fastq files 
--r reference fasta file  
--o output folder 
--t number of threads 
+-i folder containing the query fastq files \
+-r reference fasta file  \
+-o output folder \
+-t number of threads \
 -p number of samples to be run in parallel
