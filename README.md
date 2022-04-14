@@ -24,20 +24,23 @@ conda install -c bioconda vcftools=0.1.16
 ```
 
 # Instructions to run docker without the sudo command
-$ sudo groupadd docker \
-$ sudo gpasswd -a $USER docker \
-$ newgrp docker \
-$ docker run hello-world to check if docker can run without sudo 
+```python
+$ sudo groupadd docker 
+$ sudo gpasswd -a $USER docker 
+$ newgrp docker 
+$ docker run hello-world --> to check if docker can run without sudo 
+```
 
 # How to run this script in terminal:
 Choose directory in which script is located and then run the following command in terminal: \
-Create a conda environment for Pepper (run in terminal: conda create --name Pepper) \
-Conda activate Pepper \
-Run sudo setfacl -m user:($USER):rw /var/run/docker.sock to be able to execute docker and then run the \
-following command \
+```python
+Create a conda environment for Pepper (run in terminal: conda create --name Pepper) 
+Conda activate Pepper 
+Run sudo setfacl -m user:($USER):rw /var/run/docker.sock to be able to execute docker and then run the 
+following command 
 python Pepper_ont.py -i [folder with the query fastq files] -r [reference fasta file] -o [output folder]  [-t 4] 
 [-p PARALLEL]
-
+```
 -i folder containing the query fastq files \
 -r reference fasta file  \
 -o output folder \
