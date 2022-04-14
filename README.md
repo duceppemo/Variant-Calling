@@ -32,7 +32,7 @@ $ docker run hello-world --> to check if docker can run without sudo
 ```
 
 # How to run this script in terminal:
-Choose directory in which script is located and then run the following command in terminal: \
+Choose directory in which script is located and then run the following command in terminal: 
 ```python
 Create a conda environment for Pepper (run in terminal: conda create --name Pepper) 
 Conda activate Pepper 
