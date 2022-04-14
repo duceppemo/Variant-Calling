@@ -6,9 +6,11 @@ The following script is run in order to create a multi-sample vcf file from an i
 
 # Instructions for how to install all package dependencies and execute the script
 # Instructions on how to install Docker with Image
-$ sudo apt install docker.io=20.10.7-0ubuntu5~20.04.2 \
-$ sudo docker run hello-world will download a test container to confirm that the docker has been \
-successfully downloaded \
+```python
+$ sudo apt install docker.io=20.10.7-0ubuntu5~20.04.2 
+$ sudo docker run hello-world --> will download a test container to confirm that the docker has been 
+successfully downloaded 
+```
 The command to download the image is available in the run_pepper_iter function. Should only be used if the \
 image container has not already been downloaded. 
 
