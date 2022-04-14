@@ -35,14 +35,14 @@ $ docker run hello-world # --> to check if docker can run without sudo
 Choose directory in which script is located and then run the following command in terminal: 
 ```python
 # Create a conda environment for Pepper (run in terminal: conda create --name Pepper) 
-Conda activate Pepper 
+conda activate Pepper 
 Run sudo setfacl -m user:($USER):rw /var/run/docker.sock # --> to be able to execute docker and then run the 
 # following command 
 python Pepper_ont.py -i [folder with the query fastq files] -r [reference fasta file] -o [output folder]  [-t 4] 
 [-p PARALLEL]
--i # folder containing the query fastq files 
--r # reference fasta file  
--o # output folder 
--t # number of threads 
--p # number of samples to be run in parallel
 ```
+-i folder containing the query fastq files 
+-r reference fasta file  
+-o output folder 
+-t number of threads 
+-p number of samples to be run in parallel
