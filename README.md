@@ -9,7 +9,7 @@ The following script is run in order to create a multi-sample vcf file from an i
 ```python
 $ sudo apt install docker.io=20.10.7-0ubuntu5~20.04.2 
 $ sudo docker run hello-world # --> will download a test container to confirm that the docker has been 
-successfully downloaded 
+# successfully downloaded 
 ```
 The command to download the image is available in the run_pepper_iter function. Should only be used if the \
 image container has not already been downloaded. 
@@ -34,9 +34,9 @@ $ docker run hello-world # --> to check if docker can run without sudo
 # How to run this script in terminal:
 Choose directory in which script is located and then run the following command in terminal: 
 ```python
-Create a conda environment for Pepper (run in terminal: conda create --name Pepper) 
+# Create a conda environment for Pepper (run in terminal: conda create --name Pepper) 
 Conda activate Pepper 
-Run sudo setfacl -m user:($USER):rw /var/run/docker.sock to be able to execute docker and then run the 
+Run sudo setfacl -m user:($USER):rw /var/run/docker.sock # --> to be able to execute docker and then run the 
 following command 
 python Pepper_ont.py -i [folder with the query fastq files] -r [reference fasta file] -o [output folder]  [-t 4] 
 [-p PARALLEL]
