@@ -40,9 +40,9 @@ Run sudo setfacl -m user:($USER):rw /var/run/docker.sock to be able to execute d
 following command 
 python Pepper_ont.py -i [folder with the query fastq files] -r [reference fasta file] -o [output folder]  [-t 4] 
 [-p PARALLEL]
-```
--i folder containing the query fastq files \
--r reference fasta file  \
--o output folder \
--t number of threads \
+-i folder containing the query fastq files 
+-r reference fasta file  
+-o output folder 
+-t number of threads 
 -p number of samples to be run in parallel
+```
