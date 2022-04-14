@@ -13,11 +13,13 @@ The command to download the image is available in the run_pepper_iter function. 
 image container has not already been downloaded. 
 
 # Install bcftools, samtools, gatk and minimap2, vcftools
+```python
 conda install -c bioconda bcftools=1.9 \
 conda install -c bioconda samtools=1.9 \
 conda install -c bioconda gatk4=4.2.5.0 \
 conda install -c bioconda minimap2=2.24 \
 conda install -c bioconda vcftools=0.1.16
+```
 
 # Instructions to run docker without the sudo command
 $ sudo groupadd docker \
