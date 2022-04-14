@@ -8,7 +8,7 @@ The following script is run in order to create a multi-sample vcf file from an i
 # Instructions on how to install Docker with Image
 ```python
 $ sudo apt install docker.io=20.10.7-0ubuntu5~20.04.2 
-$ sudo docker run hello-world --> will download a test container to confirm that the docker has been 
+$ sudo docker run hello-world # --> will download a test container to confirm that the docker has been 
 successfully downloaded 
 ```
 The command to download the image is available in the run_pepper_iter function. Should only be used if the \
@@ -28,7 +28,7 @@ conda install -c bioconda vcftools=0.1.16
 $ sudo groupadd docker 
 $ sudo gpasswd -a $USER docker 
 $ newgrp docker 
-$ docker run hello-world --> to check if docker can run without sudo 
+$ docker run hello-world # --> to check if docker can run without sudo 
 ```
 
 # How to run this script in terminal:
