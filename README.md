@@ -23,10 +23,10 @@ conda install -c bioconda minimap2=2.24
 conda install -c bioconda vcftools=0.1.16
 ```
 # Install the pandas package
-settings-->python interpreter \
-1. Select interpretor \
-2. Click the '+' to add a new package \
-3. Search the and select the pandas package \
+settings-->python interpreter 
+1. Select interpreter 
+2. Click the '+' to add a new package 
+3. Search the and select the pandas package 
 4. Click install package which will give you \
 the package has been successfully installed
 
