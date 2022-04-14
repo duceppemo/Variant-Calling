@@ -30,7 +30,7 @@ import io
 # python Pepper_ont.py -i [folder with the query fastq files] -r [reference fasta file] -o [output folder]  [-t 4]
 # [-p PARALLEL]
 
-
+```python
 class Pepper:
     def __init__(self, args):
         # Logging information for all the required tools needs to run the script
@@ -38,6 +38,7 @@ class Pepper:
         info = 'Required tools: bcftools v=1.9, samtools v=1.9, minimap2 v=2.24, gatk v=4.2.5.0, docker v=20.10.7, ' \
                'vcftools v=0.1.16'
         logging.info(info)
+```
 
         # Arguments from the command line
         self.fastq_folder = args.input
