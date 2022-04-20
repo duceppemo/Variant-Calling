@@ -14,12 +14,13 @@ $ sudo docker run hello-world # --> will download a test container to confirm th
 The command to download the image is available in the run_pepper_iter function. Should only be used if the \
 image container has not already been downloaded. 
 
-# Install bcftools, samtools and minimap2, vcftools
+# Install bcftools, samtools and minimap2, vcftools and RAxML
 ```
 conda install -c bioconda bcftools=1.9 
 conda install -c bioconda samtools=1.9  
 conda install -c bioconda minimap2=2.24 
 conda install -c bioconda vcftools=0.1.16
+conda install -c bioconda raxml=8.2.12
 ```
 # Install the pandas package
 settings-->python interpreter 
