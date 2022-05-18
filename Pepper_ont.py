@@ -30,7 +30,6 @@ import io
 # python Pepper_ont.py -i [folder with the query fastq files] -r [reference fasta file] -o [output folder]  [-t 4]
 # [-p PARALLEL]
 
-
 class Pepper:
     def __init__(self, args):
         # Logging information for all the required tools needs to run the script
@@ -69,32 +68,34 @@ class Pepper:
         # Creates the bam file with read group tag for each query file in the list
         Methods_Calling.map_fastq_parallel(self.reference, self.fastq_list, self.bam_folder, self.cpu, self.parallel)
 
-        # Produces the GVCF and VCF files using variant calling
+        # Produces the GVCF and VCF files using variant calling and renames samples with its accession number
         Methods_Calling.run_pepper_iter(self.reference, self.bam_folder, self.pepper_folder, self.cpu)
 
         # create a list of all the gvcf files
         g_vcf_list = Methods_Calling.list_file(self.pepper_folder, ".g.vcf.gz")
 
-        # Renames each gcvf file with its unique accession number
-        Methods_Calling.rename_sample(self.reference, g_vcf_list)
-
         # Merges all the new gcvf files to create a multi-sample gvcf and vcf
-        g_vcf_rg_list = Methods_Calling.list_file(self.pepper_folder, "_rg.g.vcf.gz")
-        Methods_Calling.merge_gvcf(self.reference, g_vcf_rg_list, self.cpu)
+        Methods_Calling.merge_gvcf(self.reference, g_vcf_list, self.cpu, self.output_folder)
 
         # Reformat the multi-sample vcf file
-        Methods_Calling.fix_merged_vcf('multi_sample.vcf', 'multi_sample_v1.vcf')
+        vcf_in = self.output_folder + '/multi_sample.vcf'
+        vcf_out = self.output_folder + '/multi_sample_v1.vcf'
+        Methods_Calling.fix_merged_vcf(vcf_in, vcf_out)
 
         # Filters through the new multi-sample vcf and selects sites that are bi-allelic, contain the
         # desired quality score etc. All sites that do not pass these requirements are removed
         # Adjust the filter settings accordingly
-        Methods_Calling.filter_vcf('multi_sample_v1.vcf', 'multi_sample_final')
+        vcf = self.output_folder + '/multi_sample_v1.vcf'
+        vcf_filtered = self.output_folder + '/multi_sample_final'
+        Methods_Calling.filter_vcf(vcf, vcf_filtered)
 
         # Converts the multi-sample vcf into an aligned fasta file
-        Methods_Calling.Fasta(g_vcf_rg_list, 'multi_sample_v2.recode.vcf')
+        final_vcf = self.output_folder + '/multi_sample_final.recode.vcf'
+        Methods_Calling.Fasta(g_vcf_list, final_vcf, self.output_folder)
 
         # Creates a phylogenetic tree from the aligned fasta file
-        Methods_Calling.Create_Phylo_tree('final.fasta')
+        fasta_file = self.output_folder + '/final.fasta'
+        Methods_Calling.Create_Phylo_tree(fasta_file)
 
 
 class Methods_Calling:
@@ -194,9 +195,6 @@ class Methods_Calling:
         # Unique sample name/accession number
         sample_name = ((bam_name.split(".")[0]).split("_")[0])
 
-        # Name of new gvcf file
-        gvcf_file = sample_name + 'g.vcf'
-
         # Generate the gvcf and vcf files with pepper_deepvariant
         pepper_cmd = ['docker', 'run',
                       '-v', '{}:/ref'.format(ref_folder),
@@ -209,6 +207,7 @@ class Methods_Calling:
                       '-o', "/output/",
                       '-p', sample_name,
                       '-t', str(cpu),
+                      '-s', sample_name,
                       '--ont_r9_guppy5_sup',
                       '--gvcf']
         subprocess.run(pepper_cmd)
@@ -230,57 +229,10 @@ class Methods_Calling:
                 Methods_Calling.run_pepper(ref_file, bam_file, pepper_folder, cpu)
 
     @staticmethod
-    def rename_sample(ref_file, g_vcf_list):
-        # Gets the directory of the reference fasta file
-        ref_file_cp = os.path.dirname(ref_file) + '/ref_cp.fasta'
-
-        # Sample name of the ref file
-        ref_base = os.path.basename(ref_file)
-
-        # Saves a copy of the original reference fasta file
-        Copy_ref_file = ['cp', ref_file, ref_file_cp]
-
-        # Produces the reference file in a bgzip form
-        bgzip_cmd = ['bgzip', ref_file]
-
-        # Indexes the bgzip file
-        faidx_cmd = ['samtools', 'faidx', (ref_file + '.gz')]
-
-        # Run command to execute above commands
-        subprocess.run(Copy_ref_file)
-        p1 = subprocess.Popen(bgzip_cmd, stdout=subprocess.PIPE)
-        p1.communicate()
-        subprocess.run(faidx_cmd)
-
-        # Rename the copied file to the original name
-        ref_original = os.path.dirname(ref_file_cp) + '/' + ref_base
-        Modify_ref_file = ['mv', ref_file_cp, ref_original]
-        subprocess.run(Modify_ref_file)
-
-        # Gvcf files not found if these files were not generated
-        if g_vcf_list == list():
-            print("gcvf files not found")
-            exit()
-
-        for file in g_vcf_list:
-            # Changes the sample name to that of the accession number and indexes the files
-            file_directory = os.path.dirname(file)
-            sample_name = os.path.basename(file).split(".")[0]
-            new_file = file_directory + '/' + sample_name + '_rg.g.vcf.gz'
-            Change_sample_ID = ['gatk', "RenameSampleInVcf",
-                                '-I', file,
-                                '--NEW_SAMPLE_NAME', sample_name,
-                                '-O', new_file]
-            Index_new_file = ['tabix', new_file]
-
-            subprocess.run(Change_sample_ID)
-            subprocess.run(Index_new_file)
-
-    @staticmethod
-    def merge_gvcf(ref_file, g_v_list, cpu):
+    def merge_gvcf(ref_file, g_v_list, cpu, output):
         # Merges the gvcf files into a single multi-sample gvcf and vcf
-        merged_gvcf_file = 'multi_sample.g.vcf'
-        merged_vcf_file = 'multi_sample.vcf'
+        merged_gvcf_file = output + '/multi_sample.g.vcf'
+        merged_vcf_file =  output + '/multi_sample.vcf'
         gvcf_create_cmd = ['bcftools',
                            'merge'] + g_v_list + ['-g', ref_file, '-O', "v", '-o', merged_gvcf_file]
         vcf_create_cmd = ['bcftools',
@@ -318,9 +270,9 @@ class Methods_Calling:
                       '--maf', str(0.05),
                       '--min-alleles', str(2),
                       '--max-alleles', str(2),
-                      '--minDP', str(20),
+                      '--minDP', str(10),
                       '--max-missing', str(0.5),
-                      '--minQ', str(20),
+                      '--minQ', str(10),
                       '--remove-filtered-all',
                       '--recode']
         subprocess.run(filter_cmd)
@@ -343,7 +295,7 @@ class Methods_Calling:
     @staticmethod
     def iterate_pandas(df, sample):
         # Iterates through the pandas vcf data frame to replace the genotypes with codons/gaps
-        string = '<' + sample + '\n'
+        string = '>' + sample + '\n'
         for i in range(len(df)):
             if df.loc[i, sample][0:3] == ('./.'):
                 string = string + '-'
@@ -368,8 +320,9 @@ class Methods_Calling:
 
 
     @staticmethod
-    def Fasta(gv_list, vcf):
+    def Fasta(gv_list, vcf, output):
         # Converts the multi-sample vcf to a fasta file
+        fasta = output + 'multi_sample.fasta'
         df = Methods_Calling.vcf_pandas(vcf)
         s = ''
         L = list()
@@ -377,18 +330,18 @@ class Methods_Calling:
             L.append((os.path.basename(i).split(".")[0]).split("_")[0])
         for d in L:
             s = s + Methods_Calling.iterate_pandas(df,d) + '\n\n'
-        with open('multi_sample.fasta', 'w') as output1:
+        with open(fasta , 'w') as output1:
             output1.write(s)
-        Methods_Calling.Fasta_format_correction('multi_sample.fasta')
+        Methods_Calling.Fasta_format_correction(fasta, output)
 
     @staticmethod
-    def Fasta_format_correction(file):
+    def Fasta_format_correction(file, output):
         # fixes the formatting of the fasta file by specifying a certain amount of characters per line
-        with open('final.fasta', 'w') as output2:
+        new_fasta = output + '/final.fasta'
+        with open(new_fasta, 'w') as output2:
             with open(file, 'r') as input1:
                 for line in input1:
-                    if ('-' or 'A' or 'G' or 'T' or 'C') in line:
-                        line = '\n'.join(line[i:i + 50] for i in range(0, len(line), 50))
+                    line = '\n'.join(line[i:i + 100] for i in range(0, len(line), 100))
                     output2.write(line)
         cmd = ['rm', '-f', file]
         subprocess.run(cmd)
