@@ -5,7 +5,6 @@ from concurrent import futures
 from pathlib import Path
 import logging
 import pandas as pd
-import io
 
 
 # Instructions on how to install Docker with Image
@@ -27,15 +26,15 @@ import io
 # Conda activate Pepper
 # Run sudo setfacl -m user:($USER):rw /var/run/docker.sock to be able to execute docker and then run the
 # following command
-# python Pepper_ont.py -i [folder with the query fastq files] -r [reference fasta file] -o [output folder]  [-t 4]
+# python pepper_ont.py -i [folder with the query fastq files] -r [reference fasta file] -o [output folder]  [-t 4]
 # [-p PARALLEL]
 
 class Pepper:
     def __init__(self, args):
         # Logging information for all the required tools needs to run the script
         logging.basicConfig(level=logging.INFO)
-        info = 'Required tools: bcftools v=1.9, samtools v=1.9, minimap2 v=2.24, gatk v=4.2.5.0, docker v=20.10.7, ' \
-               'vcftools v=0.1.16'
+        info = 'Required tools: bcftools==1.9, samtools==1.9, minimap2==2.24, gatk==4.2.5.0, docker==20.10.7, ' \
+               'vcftools==0.1.16'
         logging.info(info)
 
         # Arguments from the command line
@@ -50,55 +49,53 @@ class Pepper:
         self.pepper_folder = self.output_folder + '/pepper/'
 
         # List all the input fastq files
-        self.fastq_list = Methods_Calling.list_file(self.fastq_folder, (".fastq", ".fastq.gz", ".fq", ".fq.gz"))
+        self.fastq_list = MethodsCalling.list_file(self.fastq_folder, (".fastq", ".fastq.gz", ".fq", ".fq.gz"))
 
         # Run
         Pepper.run_all(self)
 
     def run_all(self):
-        # Checking version number for gatk,minimap2,samtools,bcftools and docker
-        # Use this check to see if all the required tools in the log info have been installed
-        Methods_Calling.check_version()
+        # Checking version number for gatk, minimap2, samtools, bcftools and docker
+        MethodsCalling.check_version()
 
         # Creates the output folder
-        Methods_Calling.folder_create(self.output_folder)
-        Methods_Calling.folder_create(self.bam_folder)
-        Methods_Calling.folder_create(self.pepper_folder)
+        MethodsCalling.create_folder(self.output_folder)
+        MethodsCalling.create_folder(self.bam_folder)
+        MethodsCalling.create_folder(self.pepper_folder)
 
         # Creates the bam file with read group tag for each query file in the list
-        Methods_Calling.map_fastq_parallel(self.reference, self.fastq_list, self.bam_folder, self.cpu, self.parallel)
+        MethodsCalling.map_fastq_parallel(self.reference, self.fastq_list, self.bam_folder, self.cpu, self.parallel)
 
-        # Produces the GVCF and VCF files using variant calling and renames samples with its accession number
-        Methods_Calling.run_pepper_iter(self.reference, self.bam_folder, self.pepper_folder, self.cpu)
+        # Produces the gVCF and VCF files using variant calling and renames samples with its accession number
+        MethodsCalling.run_pepper_iter(self.reference, self.bam_folder, self.pepper_folder, self.cpu)
 
-        # create a list of all the gvcf files
-        g_vcf_list = Methods_Calling.list_file(self.pepper_folder, ".g.vcf.gz")
+        # create a list of all the gVCF files
+        g_vcf_list = MethodsCalling.list_file(self.pepper_folder, ".g.vcf.gz")
 
-        # Merges all the new gcvf files to create a multi-sample gvcf and vcf
-        Methods_Calling.merge_gvcf(self.reference, g_vcf_list, self.cpu, self.output_folder)
+        # Merges all the new gVCF files to create a multi-sample gVCF and VCF
+        MethodsCalling.merge_gvcf(self.reference, g_vcf_list, self.cpu, self.output_folder)
 
-        # Reformat the multi-sample vcf file
+        # Reformat the multi-sample VCF file
         vcf_in = self.output_folder + '/multi_sample.vcf'
         vcf_out = self.output_folder + '/multi_sample_v1.vcf'
-        Methods_Calling.fix_merged_vcf(vcf_in, vcf_out)
+        MethodsCalling.fix_merged_vcf(vcf_in, vcf_out)
 
         # Filters through the new multi-sample vcf and selects sites that are bi-allelic, contain the
         # desired quality score etc. All sites that do not pass these requirements are removed
         # Adjust the filter settings accordingly
-        vcf = self.output_folder + '/multi_sample_v1.vcf'
         vcf_filtered = self.output_folder + '/multi_sample_final'
-        Methods_Calling.filter_vcf(vcf, vcf_filtered)
+        MethodsCalling.filter_vcf(vcf_out, vcf_filtered)
 
-        # Converts the multi-sample vcf into an aligned fasta file
+        # Converts the multi-sample VCF into an aligned fasta file
         final_vcf = self.output_folder + '/multi_sample_final.recode.vcf'
-        Methods_Calling.Fasta(g_vcf_list, final_vcf, self.output_folder)
+        fasta_file = self.output_folder + '/final.fasta'
+        MethodsCalling.vcf2fasta(final_vcf, fasta_file)
 
         # Creates a phylogenetic tree from the aligned fasta file
-        fasta_file = self.output_folder + '/final.fasta'
-        Methods_Calling.Create_Phylo_tree(fasta_file)
+        MethodsCalling.make_tree_raxml(fasta_file, self.output_folder, self.cpu)
 
 
-class Methods_Calling:
+class MethodsCalling:
     @staticmethod
     def check_version():
         # Checks the version number for all the tools to see if they have been installed
@@ -108,6 +105,9 @@ class Methods_Calling:
         minimap2_vers_check_cmd = ['minimap2', '--version']
         vcftools_vers_check_cmd = ['vcftools', '-h']
         gatk_vers_check_cmd = ['gatk', '--version']
+
+        # TODO: stop running if dependency is missing
+        # TODO: log versions in log file for QA
         subprocess.run(docker_vers_check_cmd)
         subprocess.run(bcftools_vers_check_cmd)
         subprocess.run(samtools_vers_check_cmd)
@@ -123,16 +123,17 @@ class Methods_Calling:
             for file in files:
                 if file.endswith(extension):
                     file_list.append(os.path.join(root, file))
+
         # Returns this query folder is empty if the there are no query files present
         if file_list == list():
-            print("folder is empty")
+            print("{} is empty".format(folder))
             exit()
         else:
             return file_list
 
     @staticmethod
-    def folder_create(folder):
-        # Create output folder
+    def create_folder(folder):
+        # Create output folder. Will create parent folder is not exist. Won't warn is folder already exists.
         Path(folder).mkdir(parents=True, exist_ok=True)
 
     @staticmethod
@@ -175,7 +176,7 @@ class Methods_Calling:
         with futures.ThreadPoolExecutor(max_workers=parallel) as executor:
             args = ((ref_file, fastq_file, bam_folder, int(cpu / parallel))
                     for fastq_file in fastq_list)
-            for results in executor.map(lambda x: Methods_Calling.map_fastq(*x), args):
+            for results in executor.map(lambda x: MethodsCalling.map_fastq(*x), args):
                 pass
 
     @staticmethod
@@ -193,9 +194,9 @@ class Methods_Calling:
         bam_name = os.path.basename(bam_file)
 
         # Unique sample name/accession number
-        sample_name = ((bam_name.split(".")[0]).split("_")[0])
+        sample_name = bam_name.split(".")[0].split("_")[0]
 
-        # Generate the gvcf and vcf files with pepper_deepvariant
+        # Generate the gVCF and vcf files with pepper_deepvariant
         pepper_cmd = ['docker', 'run',
                       '-v', '{}:/ref'.format(ref_folder),
                       '-v', '{}:/bam'.format(bam_folder),
@@ -217,7 +218,7 @@ class Methods_Calling:
         # Pull docker if image not already downloaded
         # docker_pull_cmd = ['docker', 'pull', 'kishwars/pepper_deepvariant:r0.7']
         # subprocess.run(docker_pull_cmd)
-        bam_list = Methods_Calling.list_file(bam_folder, '.bam')
+        bam_list = MethodsCalling.list_file(bam_folder, '.bam')
 
         # Stops the code if the bam files have not been generated
         if bam_list == list():
@@ -226,15 +227,19 @@ class Methods_Calling:
         # Uses the run_pepper function to create gcvf and vcf files for each bam file
         else:
             for bam_file in bam_list:
-                Methods_Calling.run_pepper(ref_file, bam_file, pepper_folder, cpu)
+                MethodsCalling.run_pepper(ref_file, bam_file, pepper_folder, cpu)
 
     @staticmethod
     def merge_gvcf(ref_file, g_v_list, cpu, output):
-        # Merges the gvcf files into a single multi-sample gvcf and vcf
+        # Merges the gVCF files into a single multi-sample gVCF and VCF
         merged_gvcf_file = output + '/multi_sample.g.vcf'
-        merged_vcf_file =  output + '/multi_sample.vcf'
-        gvcf_create_cmd = ['bcftools',
-                           'merge'] + g_v_list + ['-g', ref_file, '-O', "v", '-o', merged_gvcf_file]
+        merged_vcf_file = output + '/multi_sample.vcf'
+        gvcf_create_cmd = ['bcftools', 'merge',
+                           '-g', ref_file,
+                           '-O', "v",
+                           '-o', merged_gvcf_file,
+                           '--threads', str(cpu),
+                           ] + g_v_list
         vcf_create_cmd = ['bcftools',
                           'convert',
                           '--gvcf2vcf',
@@ -258,6 +263,8 @@ class Methods_Calling:
                     else:
                         line = line.replace('<*>,', '')
                         line = line.replace(',<*>', '')
+                        line = line.replace('2/2', '1/1')
+                        line = line.replace('0/2', '0/1')
                     out_file.write(line)
 
     @staticmethod
@@ -267,96 +274,85 @@ class Methods_Calling:
                       '--vcf', vcf_in,
                       '--out', vcf_out,
                       '--remove-indels',
-                      '--maf', str(0.05),
+                      # '--maf', str(0.05),
                       '--min-alleles', str(2),
                       '--max-alleles', str(2),
                       '--minDP', str(10),
-                      '--max-missing', str(0.5),
+                      # '--max-missing', str(0.2),
                       '--minQ', str(10),
                       '--remove-filtered-all',
                       '--recode']
         subprocess.run(filter_cmd)
-    @staticmethod
-    def IUPAC_base(ref, alt):
-        # Adds the appropriate symbol for a heterzygous genotype (0/1)
-        if ref in 'AG' and alt in 'AG':
-            return 'R'
-        if ref in 'CT' and alt in 'CT':
-            return 'Y'
-        if ref in 'GC' and alt in 'GC':
-            return 'S'
-        if ref in 'AT' and alt in 'AT':
-            return 'W'
-        if ref in 'GT' and alt in 'GT':
-            return 'K'
-        if ref in 'AC' and alt in 'AC':
-            return 'M'
 
     @staticmethod
-    def iterate_pandas(df, sample):
-        # Iterates through the pandas vcf data frame to replace the genotypes with codons/gaps
-        string = '>' + sample + '\n'
-        for i in range(len(df)):
-            if df.loc[i, sample][0:3] == ('./.'):
-                string = string + '-'
-            if df.loc[i, sample][0:3] == '0/1':
-                string = string + Methods_Calling.IUPAC_base(df.loc[i, 'REF'], df.loc[i, 'ALT'])
-            if df.loc[i, sample][0:3] == '0/0':
-                string = string + df.loc[i, 'REF']
-            if df.loc[i, sample][0:3] == '1/1':
-                string = string + df.loc[i, 'ALT']
-        return string
+    def vcf2fasta(input_vcf, output_fasta):
+        iupac_dict = {'AG': 'R',
+                      'CT': 'Y',
+                      'GC': 'S',
+                      'AT': 'W',
+                      'GT': 'K',
+                      'AC': 'M'}
+
+        with open(output_fasta, 'w') as out_fh:
+            with open(input_vcf, 'r') as in_fh:
+                for line in in_fh:
+                    if line.startswith('##'):
+                        # out_fh.write(line)
+                        continue
+                    elif line.startswith('#CHROM'):
+                        sample_list = line.rstrip().split('\t', 9)[9].split('\t')
+                        df = pd.DataFrame(columns=sample_list)
+                    else:
+                        # Split data lines into 10 fields, the last one is the samples info
+                        field_list = line.rstrip().split('\t', 9)
+                        # Dictionary to convert 0/0 and 1/1 geno to REF or ALT call
+                        ref = field_list[3]
+                        alt = field_list[4]
+                        try:
+                            iupac = iupac_dict[ref + alt]
+                        except KeyError:
+                            iupac = iupac_dict[alt + ref]
+
+                        geno_dict = {'0/0': ref,
+                                     '1/1': alt,
+                                     '0/1': iupac,
+                                     '1/0': iupac,
+                                     './.': '-'}
+                        # Split the last field (sample info) and only keep the genotype
+                        df.loc[len(df)] = [geno_dict[x.split(':')[0]] for x in field_list[9].split('\t')]
+
+                # Convert dataframe to fasta output
+                fasta_dict = df.to_dict(orient='list')
+                for sample, seq_list in fasta_dict.items():
+                    out_fh.write('>{}\n{}\n'.format(sample, ''.join(seq_list)))
 
     @staticmethod
-    def vcf_pandas(vcf):
-        # Creates a pandas data frame from the created multi-sampple vcf
-        with open(vcf, 'r') as f:
-            lines = [l for l in f if not l.startswith('##')]
-        df = pd.read_csv(io.StringIO(''.join(lines)), dtype={'#CHROM': str, 'POS': int, 'ID': str, 'REF': str,
-                                                          'ALT': str, 'QUAL': str, 'FILTER': str, 'INFO': str},
-                                                          sep='\t').rename(columns={'#CHROM': 'CHROM'})
-        return df
+    def make_tree_raxml(aligned_fasta, output_folder, cpu):
 
+        cmd = ['raxmlHPC-PTHREADS-AVX2',
+               '-s', aligned_fasta,
+               '-w', output_folder,
+               '-n', '{}.tree'.format('.'.join(os.path.basename(aligned_fasta).split('.')[:-1])),
+               '-m', 'GTRCAT',
+               '-N', str(100),
+               '-d', '-f', 'a', '-T', str(cpu),
+               '-x', str(1234), '-p', str(123)]
 
-
-    @staticmethod
-    def Fasta(gv_list, vcf, output):
-        # Converts the multi-sample vcf to a fasta file
-        fasta = output + 'multi_sample.fasta'
-        df = Methods_Calling.vcf_pandas(vcf)
-        s = ''
-        L = list()
-        for i in gv_list:
-            L.append((os.path.basename(i).split(".")[0]).split("_")[0])
-        for d in L:
-            s = s + Methods_Calling.iterate_pandas(df,d) + '\n\n'
-        with open(fasta , 'w') as output1:
-            output1.write(s)
-        Methods_Calling.Fasta_format_correction(fasta, output)
-
-    @staticmethod
-    def Fasta_format_correction(file, output):
-        # fixes the formatting of the fasta file by specifying a certain amount of characters per line
-        new_fasta = output + '/final.fasta'
-        with open(new_fasta, 'w') as output2:
-            with open(file, 'r') as input1:
-                for line in input1:
-                    line = '\n'.join(line[i:i + 100] for i in range(0, len(line), 100))
-                    output2.write(line)
-        cmd = ['rm', '-f', file]
         subprocess.run(cmd)
 
     @staticmethod
-    def Create_Phylo_tree(fasta):
+    def run_raxml(fasta):
         # Generates the Phylogenetic tree
-        phylo_tree_cmd = ['raxmlHPC', '-s',
-                          fasta, '-n', 'multi-sample_tree',
+        phylo_tree_cmd = ['raxmlHPC-PTHREADS-AVX2',
+                          '-s', fasta,
+                          '-n', 'multi-sample_tree',
                           '-m', 'GTRCAT',
                           '-f', 'a',
                           '-x', '123',
                           '-N', 'autoMRE',
                           '-p', '456']
         return subprocess.run(phylo_tree_cmd)
+
 
 if __name__ == "__main__":
     # Required arguments

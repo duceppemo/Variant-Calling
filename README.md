@@ -1,55 +1,51 @@
 # Variant Calling
 
-# Introduction:
-The following script is run in order to create a multi-sample vcf file from an initial reference sequence and set of query sequences. In addition, it also produces a fasta file from the multi-sample vcf file which can be used for phylogenetic analysis and tree building.
+## Introduction:
+This tool was designed to call SNPs from Nanopore data using a reference genome and produce a phylogenetic tree for epidemiology purposes. The Variant calling is done using the [PEPPER-Margin-DeepVariant](https://github.com/kishwarshafin/pepper) pipeline. RAXmL is used to produced the final tree.
 
 
-# Instructions for how to install all package dependencies and execute the script
-# Instructions on how to install Docker with Image
-```
-$ sudo apt install docker.io=20.10.7-0ubuntu5~20.04.2 
-$ sudo docker run hello-world # --> will download a test container to confirm that the docker has been 
-# successfully downloaded 
-```
-The command to download the image is available in the run_pepper_iter function. Should only be used if the \
-image container has not already been downloaded. 
+## Installation
+### Docker
+The PEPPER-Margin-DeepVariant pipeline runs through docker. Please refer to official documentation to install docker:
+* https://docs.docker.com/engine/install/ubuntu/
 
-# Install bcftools, samtools and minimap2, vcftools and RAxML
-```
-conda install -c bioconda bcftools=1.9 
-conda install -c bioconda samtools=1.9  
-conda install -c bioconda minimap2=2.24 
-conda install -c bioconda vcftools=0.1.16
-conda install -c bioconda raxml=8.2.12
-```
-# Install the pandas package
-settings-->python interpreter 
-1. Select interpreter 
-2. Click the '+' to add a new package 
-3. Search the and select the pandas package 
-4. Click install package which will give you \
-a verifcation that the  package has been successfully installed
+You also need to run the post-installation steps to be able to run docker without sudo:
+* https://docs.docker.com/engine/install/linux-postinstall/
 
-# Instructions to run docker without the sudo command
-```
-$ sudo groupadd docker 
-$ sudo gpasswd -a $USER docker 
-$ newgrp docker 
-$ docker run hello-world # --> to check if docker can run without sudo 
-```
+The pipeline has been designed and tested with `docker.io=20.10.7-0ubuntu5~20.04.2`.
 
-# How to run this script in terminal:
-Choose directory in which script is located and then run the following command in terminal: 
+### Virtual environment
+It is highly recommended installing this pipeline in a virtual environment to manage all the dependencies and avoid conflicts with other tools on your system. I recommend using [miniconda](https://docs.conda.io/en/latest/miniconda.html#linux-installers) to manage the virtual environment and installing dependencies. I also find `mamba` to be more efficient than `conda` to install packages. See [here](https://github.com/mamba-org/mamba) for more info.
 ```
-# Create a conda environment for Pepper (run in terminal: conda create --name Pepper) 
-conda activate Pepper 
-Run sudo setfacl -m user:($USER):rw /var/run/docker.sock # --> to be able to execute docker and then run the 
-# following command 
-python Pepper_ont.py -i [folder with the query fastq files] -r [reference fasta file] -o [output folder]  [-t 4] 
-[-p PARALLEL]
+# Create conda environment (replace "conda" by "mamba" if you installed it)
+conda create -n pepper -c bioconda -y bcftools=1.9 samtools=1.9 \
+    minimap2=2.24  minimap2=2.24 vcftools=0.1.16 raxml=8.2.12 git
+
+# Activate environment (don't use "mamba" instead of "conda" here)
+conda activate pepper
+
+# Clone repository
+git clone https://github.com/duceppemo/nanopore_variant_calling_pepper
+
+# Test pipeline. The help file should print on screen without any error messages.
+cd nanopore_variant_calling_pepper
+python Pepper_ont.py -h 
 ```
--i folder containing the query fastq files \
--r reference fasta file  \
--o output folder \
--t number of threads \
--p number of samples to be run in parallel
+## Usage
+```
+usage: python pepper_ont.py [-h] -i /path_to_input_fastq/ -r reference.fasta -o /path_to_output_folder/ [-t 4] [-p PARALLEL]
+
+VCF and GVCF file generation
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -i /path_to_input_fastq/, --input /path_to_input_fastq/
+                        Input folder containing nanopore fastq files.
+  -r reference.fasta, --reference reference.fasta
+                        Reference fasta file.
+  -o /path_to_output_folder/, --output /path_to_output_folder/
+                        Output folder.
+  -t 4, --threads 4     Number of threads.
+  -p PARALLEL, --parallel PARALLEL
+                        Number of samples to run in parallel.
+```
